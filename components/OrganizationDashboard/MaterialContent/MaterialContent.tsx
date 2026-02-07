@@ -28,6 +28,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import axiosInstance from "@/utils/axiosInstance";
+import CustomizeDetailsModal from "@/shared/CustomizeDetailsModal/CustomizeDetailsModal";
+import Loader from "@/utils/Loader";
+import ViewMaterialContentDetails from "./ViewMaterialContentDetails";
 
 enum OrgContentType {
   STRATEGY = "STRATEGY",
@@ -63,6 +66,11 @@ const MaterialContent = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(10);
+  // details modal state
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [ModuleContentDetails, setModuleContentDetails] = useState<any>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isClosingDetails, setIsClosingDetails] = useState(false);
 
   // Get organizationId from localStorage
   const getOrganizationId = () => {
@@ -131,8 +139,8 @@ const MaterialContent = () => {
     { key: "type", label: "Type", sortable: true },
     { key: "order", label: "Order", sortable: true },
     {
-      key: "isActive",
-      label: "Status",
+      key: "isPublished",
+      label: "Publish Status",
       type: "switch" as const,
       switchType: "status" as const,
     },
@@ -194,8 +202,9 @@ const MaterialContent = () => {
   const actions = [
     {
       icon: "eye" as const,
-      onClick: (row: any) => handleView(row),
-      title: "View",
+      onClick: (row: any) => handleViewDetails(row),
+      title: "View Details",
+      disabled: false,
     },
     {
       icon: "edit" as const,
@@ -321,35 +330,66 @@ const MaterialContent = () => {
     </>
   );
 
-  const handleToggleActive = async (id: string, currentActive: boolean) => {
+  const handleTogglePublish = async (id: string, isPublished: boolean) => {
     try {
-      const newActive = !currentActive;
-      const res = await axiosInstance.patch(
-        `/org-content/org/${organizationId}/contents/${id}`,
-        {
-          isActive: newActive,
-        },
+      let res;
+      // Unpublish: no body
+      res = await axiosInstance.patch(
+        `/org-content/org/${organizationId}/contents/${id}/toggle-publish`,
       );
 
       if (res.data?.success === true) {
         toast.success(
           res?.data?.message ||
-            `MaterialContent ${
-              newActive ? "activated" : "deactivated"
-            } successfully`,
+            `MaterialContent ${isPublished ? "published" : "unpublished"} successfully`,
         );
         await refetch();
       } else {
         toast.error(
           res?.data?.message ||
-            `Failed to ${newActive ? "activate" : "deactivate"} MaterialContent`,
+            `Failed to ${isPublished ? "publish" : "unpublish"} MaterialContent`,
         );
       }
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
-        `Failed to ${currentActive ? "activate" : "deactivate"} MaterialContent`;
+        `Failed to ${isPublished ? "publish" : "unpublish"} MaterialContent`;
       toast.error(errorMessage);
+    }
+  };
+  const handleDetailsClose = () => {
+    setIsClosingDetails(true);
+    setIsDetailsModalOpen(false);
+    setTimeout(() => {
+      setModuleContentDetails(null);
+      setIsClosingDetails(false);
+    }, 300);
+  };
+
+  const handleViewDetails = async (row: any) => {
+    setIsLoadingDetails(true);
+    setIsDetailsModalOpen(true);
+    try {
+      const res = await axiosInstance.get(
+        `/org-content/org/${organizationId}/contents/${row.id}`,
+      );
+
+      if (res.data?.success === true) {
+        setModuleContentDetails(res.data.data);
+      } else {
+        toast.error(
+          res?.data?.message || "Failed to fetch ModuleContent details",
+        );
+        setIsDetailsModalOpen(false);
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to fetch ModuleContent details",
+      );
+      setIsDetailsModalOpen(false);
+    } finally {
+      setIsLoadingDetails(false);
     }
   };
 
@@ -360,13 +400,12 @@ const MaterialContent = () => {
       title: MaterialContent.title,
       type: MaterialContent.type,
       order: MaterialContent.order,
-      isPublished: MaterialContent.isPublished ? "Active" : "Inactive",
+      isPublished: MaterialContent.isPublished,
       description: MaterialContent.description,
       content: MaterialContent.content,
       mediaUrl: MaterialContent.mediaUrl,
       organizationId: MaterialContent.organizationId,
-      onToggleActive: (id: string, currentActive: boolean) =>
-        handleToggleActive(id, currentActive),
+      onTogglePublish: handleTogglePublish,
     })) || [];
 
   return (
@@ -490,6 +529,25 @@ const MaterialContent = () => {
           </div>
         </Form>
       </CustomizeModal>
+      <CustomizeDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={handleDetailsClose}
+        title="ModuleContent Details"
+        width="max-w-4xl"
+      >
+        {isLoadingDetails ? (
+          <Loader />
+        ) : ModuleContentDetails || isClosingDetails ? (
+          <ViewMaterialContentDetails
+            onClose={handleDetailsClose}
+            ModuleContentDetails={ModuleContentDetails}
+          />
+        ) : (
+          <div className="px-6 py-12 text-center text-gray-500">
+            No module details available
+          </div>
+        )}
+      </CustomizeDetailsModal>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

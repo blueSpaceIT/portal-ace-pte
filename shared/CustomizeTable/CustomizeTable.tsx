@@ -32,7 +32,8 @@ interface Column {
     | "image"
     | "switch"
     | "statusSelect"
-    | "restore/archive";
+    | "restore/archive"
+    | "isPublished";
 
   switchType?: "status" | "feature" | "restore/archive";
 }
@@ -339,9 +340,24 @@ const CustomizeTable: React.FC<CustomizeTableProps> = ({
             </div>
           );
         }
-
-        // Default fallback
-        return value;
+        // isPublished switch
+        if (column.key === "isPublished") {
+          return (
+            <div className="flex cursor-pointer items-center gap-2">
+              <Switch
+                checked={row.isPublished}
+                onCheckedChange={() => {
+                  if (row.onTogglePublish) {
+                    row.onTogglePublish(row.id, row.isPublished);
+                  }
+                }}
+              />
+              <span className="text-sm">
+                {row.isPublished ? "Published" : "Draft"}
+              </span>
+            </div>
+          );
+        }
 
       default:
         return value;

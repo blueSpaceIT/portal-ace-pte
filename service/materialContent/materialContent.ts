@@ -105,19 +105,17 @@ export const updateMaterialContent = async (
   }
 };
 
-export const publishedMaterialContent = async (
+export const getSingleMaterialContent = async (
   organizationId: string,
   materialContentId: string,
-  isPublished: boolean,
 ) => {
   try {
-    const { data } = await axiosInstance.patch(
-      `/org-content/org/${organizationId}/contents/${materialContentId}/publish`,
-      { isPublished },
+    const { data } = await axiosInstance.get(
+      `/org-content/org/${organizationId}/contents/${materialContentId}`,
     );
     return data;
   } catch (error: any) {
-    console.error("Error updating material content:", error);
+    console.error("Error fetching single material content:", error);
     throw error.response?.data || error;
   }
 };

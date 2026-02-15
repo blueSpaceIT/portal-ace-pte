@@ -43,8 +43,8 @@ axiosInstance.interceptors.response.use(
           },
         );
 
-        localStorage.setItem("access_token", data.accessToken);
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        localStorage.setItem("access_token", data.data.accessToken);
+        originalRequest.headers.Authorization = data.data.accessToken;
 
         // retry original request with new token
         return axiosInstance(originalRequest);
